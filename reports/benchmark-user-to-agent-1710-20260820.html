@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>User-to-Agent Streaming Benchmark Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>:root{--blue:#155e75;--navy:#19324a;--green:#08783e;--amber:#a15c00;--red:#b42318;--ink:#172033;--muted:#526079;--line:#dce3ee;--bg:#f4f7fb}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Aptos,'Trebuchet MS',sans-serif;line-height:1.55}main{max-width:1450px;margin:auto;padding:24px}h1{margin:0 0 16px;padding:24px;border-radius:6px;color:#fff;background:var(--navy);font-size:28px}h2{color:#29377a;margin-top:28px;border-left:5px solid var(--blue);padding-left:10px}.subtitle{color:var(--muted);margin:0 0 18px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.card,.section,.chart{background:#fff;border-radius:6px;padding:17px;margin:12px 0;box-shadow:0 2px 12px #0000000d}.metric{font-size:25px;font-weight:700;color:var(--blue)}.ok{color:var(--green);font-weight:700}.warn{color:var(--amber);font-weight:700}.bad{color:var(--red);font-weight:700}.scroll{overflow:auto;background:#fff;border-radius:6px;box-shadow:0 2px 12px #0000000d}.flow{display:flex;align-items:stretch;gap:8px;overflow:auto;padding:8px 0}.flow-node{min-width:170px;flex:1;padding:14px;border:1px solid var(--line);border-radius:6px;background:#f8fafc;text-align:center;font-weight:700}.flow-arrow{align-self:center;color:var(--blue);font-size:24px;font-weight:700}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid var(--line);padding:8px;text-align:right;white-space:nowrap}th{background:#eaf0ff}th:first-child,td:first-child{text-align:left}code{background:#eef2ff;padding:2px 5px;border-radius:4px;word-break:break-all}ul,ol{line-height:1.75}.callout{border-left:5px solid var(--amber);background:#fffaf0}.footer{font-size:12px;color:var(--muted);text-align:center;margin:28px 0}</style></head><body><main>
+<h1>User-to-Agent Streaming Benchmark Report</h1>
+<p class="subtitle">Endpoint <code>https://xxxxxxx.openai.azure.com</code> · API 2024-10-21 · Generated 2026-08-20 17:10:33 +0800</p>
+<div class="grid">
+<div class="card"><b>Measured workload</b><div class="metric">20 requests</div>10 models × 2 templates</div>
+<div class="card"><b>Response ready</b><div class="metric">20/20</div>100.0% structurally usable</div>
+<div class="card"><b>Response mode</b><div class="metric">streaming</div>Both reports use the same streaming measurements</div>
+<div class="card"><b>Validation failures</b><div class="metric bad">0</div>Assistant JSON parse or schema failures</div>
+<div class="card"><b>Ranking scope</b><div class="metric">Per template</div>Unlike workloads are never combined into one winner</div>
+</div>
+<h2>1. Measurement flow</h2><div class="section">
+<div class="flow">
+<div class="flow-node">Send API request</div>
+<div class="flow-arrow" aria-hidden="true">&#8594;</div>
+<div class="flow-node">First token arrives (TTFT)</div>
+<div class="flow-arrow" aria-hidden="true">&#8594;</div>
+<div class="flow-node">Last token arrives (TTLT)</div>
+<div class="flow-arrow" aria-hidden="true">&#8594;</div>
+<div class="flow-node">Answer complete</div>
+</div></div>
+<h2>2. Project setting</h2>
+<div class="section"><table>
+<tr><th>Item</th><th>Configuration</th></tr>
+<tr><td>Endpoint</td><td><code>https://xxxxxxx.openai.azure.com</code></td></tr>
+<tr><td>API version</td><td>2024-10-21</td></tr>
+<tr><td>Authentication</td><td>Azure CLI via AzureCliCredential; token cached before per-request timer</td></tr>
+<tr><td>API</td><td>Chat Completions; HTTP/2 enabled when negotiated (negotiated protocol not recorded); response mode: streaming</td></tr>
+<tr><td>Execution</td><td>Concurrency 1; sequential per model; persistent HTTP client; one warm-up call per (template, model) recorded but excluded from stats</td></tr>
+<tr><td>Output limit</td><td>2,000 tokens (sent as <code>max_completion_tokens</code> for reasoning models, otherwise <code>max_tokens</code>)</td></tr>
+<tr><td>Measured iterations</td><td>1 per model/template, plus one excluded warm-up</td></tr>
+<tr><td>Templates</td><td>Query routing, Reasoning</td></tr>
+</table></div>
+<h2>3. Measurement contract</h2>
+<div class="section">
+<p><b>This is not isolated inference time.</b> Client-observed latency includes network transport, Azure front-end processing, queueing, prompt ingestion, model work, and response transfer. Authentication occurs before the per-request timer.</p>
+<p><b>Thinking estimate</b> is TTFT: request start to first visible content. <b>Composing estimate</b> is TTLT minus TTFT: first to final visible content.</p>
+<p>The stacked timing total is <b>TTLT</b>. TTFT is both the first milestone and the thinking segment; it is not added a second time.</p>
+<p>Measured iterations select queries in template order and cycle through the query pool when necessary. Reported statistics focus on average latency and slow-case P95 over response-ready iterations. The warm-up call is recorded in <code>rawdata/raw-results.jsonl</code> for audit but excluded from stats.</p>
+</div>
+<h2>4. Results — Query routing</h2>
+<div class="section"><p>Template <code>routing</code> has a pool of 10 user queries. Each model runs one warm-up (discarded) then 1 timed iterations. Rows rank by usable rate, then TTLT P95, then average.</p></div>
+<div class="chart"><canvas id="chart_4"></canvas></div>
+<div class="scroll"><table><thead><tr>
+<th>Model</th><th>Usable</th><th>Usable rate</th>
+<th>Average TTFT / thinking estimate</th><th>Average composing estimate</th><th>Average TTLT</th><th>Slow-case TTLT (P95)</th>
+</tr></thead><tbody>
+<tr><td>gpt-5.4-nano</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>943 ms</td>
+<td>113 ms</td>
+<td>1.06 s</td>
+<td>1.06 s</td>
+</tr>
+<tr><td>gpt-4o</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.12 s</td>
+<td>1 ms</td>
+<td>1.12 s</td>
+<td>1.12 s</td>
+</tr>
+<tr><td>gpt-5-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.09 s</td>
+<td>62 ms</td>
+<td>1.15 s</td>
+<td>1.15 s</td>
+</tr>
+<tr><td>gpt-5.4-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.17 s</td>
+<td>1 ms</td>
+<td>1.17 s</td>
+<td>1.17 s</td>
+</tr>
+<tr><td>gpt-52</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.16 s</td>
+<td>128 ms</td>
+<td>1.28 s</td>
+<td>1.28 s</td>
+</tr>
+<tr><td>gpt-5.4</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.40 s</td>
+<td>72 ms</td>
+<td>1.47 s</td>
+<td>1.47 s</td>
+</tr>
+<tr><td>gpt-4o-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.50 s</td>
+<td>0 ms</td>
+<td>1.50 s</td>
+<td>1.50 s</td>
+</tr>
+<tr><td>gpt-4.1</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.98 s</td>
+<td>226 ms</td>
+<td>2.20 s</td>
+<td>2.20 s</td>
+</tr>
+<tr><td>gpt-5.1</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.10 s</td>
+<td>257 ms</td>
+<td>2.36 s</td>
+<td>2.36 s</td>
+</tr>
+<tr><td>gpt-4.1-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.64 s</td>
+<td>97 ms</td>
+<td>2.73 s</td>
+<td>2.73 s</td>
+</tr>
+</tbody></table></div>
+<p class="subtitle">Latency values are client-observed and shown in ms, or seconds when ≥ 1000 ms.</p>
+<h2>5. Results — Reasoning</h2>
+<div class="section"><p>Template <code>reasoning</code> has a pool of 10 user queries. Each model runs one warm-up (discarded) then 1 timed iterations. Rows rank by usable rate, then TTLT P95, then average.</p></div>
+<div class="chart"><canvas id="chart_5"></canvas></div>
+<div class="scroll"><table><thead><tr>
+<th>Model</th><th>Usable</th><th>Usable rate</th>
+<th>Average TTFT / thinking estimate</th><th>Average composing estimate</th><th>Average TTLT</th><th>Slow-case TTLT (P95)</th>
+</tr></thead><tbody>
+<tr><td>gpt-4o</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.93 s</td>
+<td>821 ms</td>
+<td>2.76 s</td>
+<td>2.76 s</td>
+</tr>
+<tr><td>gpt-5.4-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.37 s</td>
+<td>1.01 s</td>
+<td>3.38 s</td>
+<td>3.38 s</td>
+</tr>
+<tr><td>gpt-4o-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>1.66 s</td>
+<td>1.79 s</td>
+<td>3.45 s</td>
+<td>3.45 s</td>
+</tr>
+<tr><td>gpt-52</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.26 s</td>
+<td>1.88 s</td>
+<td>4.14 s</td>
+<td>4.14 s</td>
+</tr>
+<tr><td>gpt-4.1</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.56 s</td>
+<td>3.16 s</td>
+<td>5.72 s</td>
+<td>5.72 s</td>
+</tr>
+<tr><td>gpt-5.4-nano</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>3.56 s</td>
+<td>2.29 s</td>
+<td>5.85 s</td>
+<td>5.85 s</td>
+</tr>
+<tr><td>gpt-5.4</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.88 s</td>
+<td>3.52 s</td>
+<td>6.40 s</td>
+<td>6.40 s</td>
+</tr>
+<tr><td>gpt-5.1</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>3.76 s</td>
+<td>4.22 s</td>
+<td>7.99 s</td>
+<td>7.99 s</td>
+</tr>
+<tr><td>gpt-5-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>7.05 s</td>
+<td>2.14 s</td>
+<td>9.18 s</td>
+<td>9.18 s</td>
+</tr>
+<tr><td>gpt-4.1-mini</td>
+<td class="ok">1/1</td>
+<td>100.0%</td>
+<td>2.61 s</td>
+<td>15.67 s</td>
+<td>18.27 s</td>
+<td>18.27 s</td>
+</tr>
+</tbody></table></div>
+<p class="subtitle">Latency values are client-observed and shown in ms, or seconds when ≥ 1000 ms.</p>
+<h2>5. Customizing the sample templates</h2>
+<div class="section callout">
+<p>Edit the YAML template files to model your own workload:</p>
+<ul>
+<li><code>prompt-template-routing.yaml</code> — Query routing</li>
+<li><code>prompt-template-reasoning.yaml</code> — Reasoning</li>
+</ul>
+<p>Templates define metadata, request controls, the system prompt, queries, and an optional <code>validation.schema</code>. A response is ready only after it satisfies the configured schema. Structural validation does not evaluate semantic correctness.</p>
+</div>
+<div class="footer">Source artifacts: rawdata/raw-results.jsonl, rawdata/summary.json, rawdata/benchmark.log, benchmark.py. Response-ready latency is client-observed end-to-end time, not isolated model inference.</div>
+</main>
+<script>
+new Chart(document.getElementById("chart_4"),{type:"bar",data:{labels:["gpt-5.4-nano", "gpt-4o", "gpt-5-mini", "gpt-5.4-mini", "gpt-52", "gpt-5.4", "gpt-4o-mini", "gpt-4.1", "gpt-5.1", "gpt-4.1-mini"],datasets:[{"label": "Thinking estimate (TTFT)", "data": [942.9, 1123.0, 1085.2, 1166.2, 1155.8, 1397.8, 1495.9, 1976.2, 2098.1, 2638.0], "backgroundColor": "#155e75", "stack": "timing"}, {"label": "Composing estimate (TTLT - TTFT)", "data": [112.5, 0.5, 61.6, 0.9, 128.4, 71.9, 0.3, 226.3, 257.3, 96.6], "backgroundColor": "#d97706", "stack": "timing"}, {"type": "line", "label": "Average TTLT marker", "data": [1055.4, 1123.5, 1146.7, 1167.1, 1284.3, 1469.7, 1496.3, 2202.5, 2355.4, 2734.5], "borderColor": "#19324a", "backgroundColor": "#19324a"}]},options:{responsive:true,plugins:{legend:{position:"top"},title:{display:true,text:"Query routing - stacked total is TTLT (ms)"}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:"Milliseconds"}}}}});
+new Chart(document.getElementById("chart_5"),{type:"bar",data:{labels:["gpt-4o", "gpt-5.4-mini", "gpt-4o-mini", "gpt-52", "gpt-4.1", "gpt-5.4-nano", "gpt-5.4", "gpt-5.1", "gpt-5-mini", "gpt-4.1-mini"],datasets:[{"label": "Thinking estimate (TTFT)", "data": [1934.6, 2374.7, 1662.7, 2264.3, 2562.0, 3559.0, 2882.9, 3762.3, 7045.0, 2605.9], "backgroundColor": "#155e75", "stack": "timing"}, {"label": "Composing estimate (TTLT - TTFT)", "data": [821.0, 1007.6, 1787.8, 1880.4, 3157.1, 2290.7, 3521.4, 4224.5, 2137.9, 15669.0], "backgroundColor": "#d97706", "stack": "timing"}, {"type": "line", "label": "Average TTLT marker", "data": [2755.6, 3382.3, 3450.5, 4144.7, 5719.1, 5849.7, 6404.3, 7986.8, 9182.9, 18274.9], "borderColor": "#19324a", "backgroundColor": "#19324a"}]},options:{responsive:true,plugins:{legend:{position:"top"},title:{display:true,text:"Reasoning - stacked total is TTLT (ms)"}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:"Milliseconds"}}}}});
+</script></body></html>

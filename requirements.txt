@@ -1,0 +1,4 @@
+httpx[http2]>=0.27
+azure-identity>=1.17
+PyYAML>=6.0
+jsonschema>=4.23

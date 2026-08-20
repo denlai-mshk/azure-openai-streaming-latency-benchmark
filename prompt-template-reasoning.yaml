@@ -1,0 +1,58 @@
+# Sample template — REASONING workload.
+# The model must analyze intent, reason step-by-step, then answer.
+# Edit `system` or `queries` to model your own reasoning workload.
+# Each entry in `queries` is one iteration; add or remove to control iteration count.
+
+name: "reasoning"
+display_name: "Reasoning"
+reasoning_effort: "medium"
+temperature: 0
+top_p: 1
+validation:
+  schema:
+    type: "object"
+    required: ["analysis", "reasoning_steps", "answer"]
+    additionalProperties: false
+    properties:
+      analysis:
+        type: "string"
+        minLength: 1
+      reasoning_steps:
+        type: "array"
+        minItems: 1
+        items:
+          type: "string"
+          minLength: 1
+      answer:
+        type: "string"
+        minLength: 1
+
+system: |
+  You are a careful reasoning assistant.
+
+  For every user query:
+    1. Analyze the underlying intent in one short sentence.
+    2. Work through the problem step by step, showing intermediate reasoning.
+    3. Produce a final, direct answer.
+
+  Respond with a single JSON object and NOTHING else, in this exact shape:
+    {
+      "analysis": "<one-sentence intent analysis>",
+      "reasoning_steps": ["<step 1>", "<step 2>", "..."],
+      "answer": "<final answer, concise>"
+    }
+
+  Do not include markdown fences, prose before or after the JSON, or extra fields.
+  Keep each reasoning step to a single sentence.
+
+queries:
+  - "A train leaves Station A at 09:00 travelling at 80 km/h. Another leaves Station B at 09:30 travelling at 100 km/h towards A. The stations are 300 km apart. At what time do they meet?"
+  - "I have 3 red socks, 5 blue socks, and 4 green socks in a drawer. In the dark, how many socks must I pull out to guarantee a matching pair?"
+  - "A software team ships 4 features per sprint. Two sprints ago they had 12 open bugs; each sprint they close 5 bugs and open 3 new ones. How many bugs are open now, and when will they reach zero?"
+  - "If a product's monthly churn is 4% and it starts the month with 25,000 users, and 2,000 new users join, what is the end-of-month user count?"
+  - "Which is heavier: 1 kg of feathers or 1 kg of steel — and explain why the question is commonly misunderstood."
+  - "A recipe for 4 people uses 300 g flour, 200 ml milk, and 3 eggs. Scale it for 7 people, rounding eggs to the nearest whole number, and note any adjustment needed."
+  - "You have two ropes that each burn for exactly 60 minutes, but they burn unevenly. How do you measure exactly 45 minutes?"
+  - "Given the sequence 2, 6, 12, 20, 30, what is the next number and what rule generates the sequence?"
+  - "A customer's monthly bill grew from $120 to $186 over 6 months. What is the average month-over-month percentage growth rate?"
+  - "You must choose between a job paying $90,000 base with a 10% annual bonus, or $95,000 base with a 4% bonus. Assuming both bonuses are guaranteed, which pays more in year 1 and by how much?"

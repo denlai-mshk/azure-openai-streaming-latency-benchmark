@@ -1,0 +1,64 @@
+# Azure OpenAI Response-Ready Benchmark configuration.
+# Edit endpoint / api_version / models list to match your Azure OpenAI resource.
+
+endpoint: "https://xxxx.openai.azure.com/"
+api_version: "2024-10-21"
+
+# Microsoft Entra tenant that owns the Azure OpenAI resource. The benchmark passes
+# this to AzureCliCredential and verifies the token tenant before sending requests.
+tenant_id: "xxxxxxxx-zzzz-zzzz-zzzz-xxxxxxxxx"
+
+# Per-request cap on generated tokens (local config name).
+# The script auto-selects the correct Chat Completions request field per model:
+#   - Reasoning models  (gpt-5 family, o1/o3/o4-mini, codex-mini)  -> `max_completion_tokens`
+#   - Non-reasoning     (gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, gpt-3.5-turbo) -> `max_tokens`
+# Selection is driven by the model row's `supports_reasoning_effort` capability.
+# NOTE: `max_output_tokens` is the Responses API parameter and is NOT used by this script.
+# Ref: https://learn.microsoft.com/azure/ai-services/openai/how-to/reasoning
+token_budget: 2000
+
+# HTTP timeout value for each request (seconds).
+request_timeout_s: 180
+
+# Number of measured requests per model, per template. Default: 10.
+# One additional warm-up request runs for each model/template and is excluded from stats.
+# If this exceeds a template's query count, queries repeat in their listed order.
+iterations: 10
+
+# List of deployments to benchmark. `deployment` is the Azure OpenAI *deployment name*
+# (as configured in the resource), `display_name` is the friendly label shown in the
+# report table. Set `supports_reasoning_effort` for o-series / gpt-5 reasoning models.
+# Each prompt template supplies the reasoning effort used for that workload.
+models:
+  - deployment: "gpt-4o"
+    display_name: "gpt-4o"
+  - deployment: "gpt-4o-mini"
+    display_name: "gpt-4o-mini"
+  - deployment: "gpt-4.1"
+    display_name: "gpt-4.1"
+  - deployment: "gpt-4.1-mini"
+    display_name: "gpt-4.1-mini"
+  - deployment: "gpt-52"
+    display_name: "gpt-52"
+    supports_reasoning_effort: true
+  - deployment: "gpt-5.1"
+    display_name: "gpt-5.1"
+    supports_reasoning_effort: true
+  - deployment: "gpt-5.4-nano"
+    display_name: "gpt-5.4-nano"
+    supports_reasoning_effort: true
+  - deployment: "gpt-5-mini"
+    display_name: "gpt-5-mini"
+    supports_reasoning_effort: true
+  - deployment: "gpt-5.4"
+    display_name: "gpt-5.4"
+    supports_reasoning_effort: true
+  - deployment: "gpt-5.4-mini"
+    display_name: "gpt-5.4-mini"
+    supports_reasoning_effort: true
+
+# Prompt templates to run, in order. Each template file supplies its own system
+# prompt and a query pool. Measured iterations cycle through that pool in order.
+templates:
+  - "prompt-template-routing.yaml"
+  - "prompt-template-reasoning.yaml"

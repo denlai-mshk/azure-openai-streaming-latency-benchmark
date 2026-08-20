@@ -1,0 +1,57 @@
+# Sample template — QUERY ROUTING workload.
+# The model must analyze the user's intent and pick ONE downstream agent.
+# Edit `system` or `queries` to model your own routing workload.
+# Each entry in `queries` is one iteration; add or remove to control iteration count.
+
+name: "routing"
+display_name: "Query routing"
+reasoning_effort: "low"
+temperature: 0
+top_p: 1
+validation:
+  schema:
+    type: "object"
+    required: ["intent", "agent", "confidence", "reason"]
+    additionalProperties: false
+    properties:
+      intent:
+        type: "string"
+        minLength: 1
+      agent:
+        type: "string"
+        enum: ["billing_agent", "tech_support_agent", "sales_agent", "hr_agent", "general_faq_agent"]
+      confidence:
+        type: "number"
+        minimum: 0
+        maximum: 1
+      reason:
+        type: "string"
+        minLength: 1
+
+system: |
+  You are an intent router for a multi-agent customer platform.
+
+  Analyze the user's message, identify the primary intent, then select EXACTLY ONE
+  downstream agent from this fixed list:
+    - billing_agent          : invoices, payments, refunds, subscription charges
+    - tech_support_agent     : product errors, outages, bug reports, how-to troubleshooting
+    - sales_agent            : pricing, plans, upgrades, new purchases, product comparison
+    - hr_agent               : employee benefits, leave, payroll, internal HR policy
+    - general_faq_agent      : anything else, or ambiguous / small-talk queries
+
+  Respond with a single compact JSON object and NOTHING else, in this exact shape:
+    {"intent": "<short label>", "agent": "<one of the five above>", "confidence": <0.0-1.0>, "reason": "<one sentence>"}
+
+  Do not include markdown fences, prose before or after the JSON, or extra fields.
+
+queries:
+  - "My last invoice charged me twice for the Pro plan, can you refund the duplicate?"
+  - "The dashboard shows a 502 error every time I click Export. Started about an hour ago."
+  - "What's the price difference between the Team and Enterprise tiers if I have 40 users?"
+  - "How many annual leave days do I have left this year?"
+  - "Do you guys ship to New Zealand?"
+  - "I forgot to cancel my trial and got billed $49 — is there a grace-period refund?"
+  - "App keeps crashing on iOS 18.2 after the latest update, logs show a SIGSEGV."
+  - "Can we get a demo of the multi-region failover feature before renewing?"
+  - "Where do I submit reimbursement for the conference I attended last week?"
+  - "What's your company's founding year?"
