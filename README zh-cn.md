@@ -229,7 +229,7 @@ statistics。query 按照每个 template 中列出的顺序选择；如果 `iter
 
 ```powershell
 python benchmark.py --render-summary sample-streaming-summary.json `
-  --report-timestamp 1200-20260820 --out .
+  --report-timestamp 1800-20260820 --out .
 ```
 
 benchmark 会在指定的 `--out` directory 下自动创建 `reports/` 和 `rawdata/`。Offline
@@ -272,9 +272,9 @@ benchmark 会在指定的 `--out` directory 下自动创建 `reports/` 和 `rawd
 | `rawdata/benchmark.log` | run progress 和 error |
 | `sample-streaming-summary.json` | 用于 offline report rendering 的 deterministic illustrative input |
 
-仓库中的 `reports/benchmark-user-to-agent-1200-20260820.html` 和
-`reports/benchmark-agent-to-agent-1200-20260820.html` 是 illustrative example，并非真实的
-Azure benchmark result。
+仓库中的 [User-to-Agent sample report](reports/benchmark-user-to-agent-1800-20260820.html)
+和 [Agent-to-Agent sample report](reports/benchmark-agent-to-agent-1800-20260820.html)
+是 illustrative example，并非真实的 Azure benchmark result。
 
 ## Technical reference
 
@@ -312,3 +312,26 @@ python -m unittest -v test_benchmark.py
 
 test 覆盖 sign-in check、model request setting、Streaming completion、timing invariant、
 response usability、audience-specific ranking 和 offline dual-report generation。
+
+## 如何阅读 report
+
+> **重点：** benchmark 只需运行一次，即可获得两份 HTML report file。每份 file 都包含两个
+> workload 的 result，因此共有四种 workload-and-audience 组合。请选择与 use case 匹配的组合。
+
+两份 sample report 如下：
+
+- [User-to-Agent Streaming Benchmark Report](reports/benchmark-user-to-agent-1800-20260820.html)
+- [Agent-to-Agent Streaming Benchmark Report](reports/benchmark-agent-to-agent-1800-20260820.html)
+
+首先选择 workload，然后根据 response 的 consumer 选择对应的 report：
+
+| 组合 | 适用场景 | 重点关注 |
+| --- | --- | --- |
+| **Query routing + Agent-to-Agent** | 一个 Agent 将 request 路由给另一个 Agent，而后者需要获得完整的 routing decision 才能开始执行。 | Response completion wait 和 completion tail |
+| **Reasoning + Agent-to-Agent** | 一个 Agent 完成 reasoning task 后，另一个 Agent 才能使用完整 answer。 | Response completion wait 和 completion tail |
+| **Query routing + User-to-Agent** | 用户在 streamed routing 或 classification response 到达时开始阅读。 | TTFT、composing estimate 和 TTLT |
+| **Reasoning + User-to-Agent** | 用户在 streamed reasoning response 到达时开始阅读。 | TTFT、composing estimate 和 TTLT |
+
+两份 report 使用同一次 benchmark run 和同一组 Streaming measurement。User-to-Agent report
+强调用户何时可以开始阅读，以及可见 answer 何时完成。Agent-to-Agent report 强调
+complete-response wait，因为下一个 Agent 通常需要完整 context 才能开始执行。

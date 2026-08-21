@@ -242,7 +242,7 @@ To regenerate both illustrative reports without Azure access:
 
 ```powershell
 python benchmark.py --render-summary sample-streaming-summary.json `
-  --report-timestamp 1200-20260820 --out .
+  --report-timestamp 1800-20260820 --out .
 ```
 
 The benchmark creates `reports/` and `rawdata/` automatically beneath the selected
@@ -289,9 +289,9 @@ A run writes these files:
 | `rawdata/benchmark.log` | Run progress and errors |
 | `sample-streaming-summary.json` | Deterministic illustrative input for offline report rendering |
 
-The checked-in `reports/benchmark-user-to-agent-1200-20260820.html` and
-`reports/benchmark-agent-to-agent-1200-20260820.html` files are illustrative examples,
-not live Azure benchmark results.
+The checked-in [User-to-Agent sample report](reports/benchmark-user-to-agent-1800-20260820.html)
+and [Agent-to-Agent sample report](reports/benchmark-agent-to-agent-1800-20260820.html)
+are illustrative examples, not live Azure benchmark results.
 
 ## Technical reference
 
@@ -331,3 +331,28 @@ python -m unittest -v test_benchmark.py
 They cover sign-in checks, model request settings, streaming completion, timing
 invariants, response usability, audience-specific ranking, and offline dual-report
 generation.
+
+## How to read the report
+
+> **Focus point:** Run the benchmark once and you get two HTML report files. Each file
+> contains results for both workloads, giving you four workload-and-audience
+> combinations. Pick the combination that matches your use case.
+
+The two sample reports are:
+
+- [User-to-Agent Streaming Benchmark Report](reports/benchmark-user-to-agent-1800-20260820.html)
+- [Agent-to-Agent Streaming Benchmark Report](reports/benchmark-agent-to-agent-1800-20260820.html)
+
+Choose the workload first, then choose who consumes the response:
+
+| Combination | Use it when | Focus on |
+| --- | --- | --- |
+| **Query routing + Agent-to-Agent** | One agent routes a request to another agent, which needs the complete routing decision before it can start. | Response completion wait and completion tail |
+| **Reasoning + Agent-to-Agent** | One agent completes a reasoning task before another agent can use the full answer. | Response completion wait and completion tail |
+| **Query routing + User-to-Agent** | A user reads a streamed routing or classification response as it arrives. | TTFT, composing estimate, and TTLT |
+| **Reasoning + User-to-Agent** | A user reads a streamed reasoning response as it arrives. | TTFT, composing estimate, and TTLT |
+
+Both reports use the same benchmark run and the same streaming measurements. The
+User-to-Agent report emphasizes when a person can start reading and when the visible
+answer finishes. The Agent-to-Agent report emphasizes the complete-response wait
+because the next agent normally needs the full context before it can start.
