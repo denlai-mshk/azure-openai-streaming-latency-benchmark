@@ -340,8 +340,8 @@ generation.
 
 The two sample reports are:
 
-- [User-to-Agent Streaming Benchmark Report](reports/benchmark-user-to-agent-1800-20260820.html)
-- [Agent-to-Agent Streaming Benchmark Report](reports/benchmark-agent-to-agent-1800-20260820.html)
+- [User-to-Agent Streaming Benchmark Report](https://denlai-mshk.github.io/azure-openai-streaming-latency-benchmark/reports/benchmark-user-to-agent-1800-20260820.html)
+- [Agent-to-Agent Streaming Benchmark Report](https://denlai-mshk.github.io/azure-openai-streaming-latency-benchmark/reports/benchmark-agent-to-agent-1800-20260820.html)
 
 Choose the workload first, then choose who consumes the response:
 

@@ -320,8 +320,8 @@ response usability、audience-specific ranking 和 offline dual-report generatio
 
 两份 sample report 如下：
 
-- [User-to-Agent Streaming Benchmark Report](reports/benchmark-user-to-agent-1800-20260820.html)
-- [Agent-to-Agent Streaming Benchmark Report](reports/benchmark-agent-to-agent-1800-20260820.html)
+- [User-to-Agent Streaming Benchmark Report](https://denlai-mshk.github.io/azure-openai-streaming-latency-benchmark/reports/benchmark-user-to-agent-1800-20260820.html)
+- [Agent-to-Agent Streaming Benchmark Report](https://denlai-mshk.github.io/azure-openai-streaming-latency-benchmark/reports/benchmark-agent-to-agent-1800-20260820.html)
 
 首先选择 workload，然后根据 response 的 consumer 选择对应的 report：
 
