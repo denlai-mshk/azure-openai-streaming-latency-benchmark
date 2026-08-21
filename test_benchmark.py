@@ -277,8 +277,18 @@ class StreamingMeasurementTests(unittest.TestCase):
             [iteration],
         )
         self.assertEqual(summary["ttlt_ms"]["p95"], iteration.last_content_ms)
+        self.assertEqual(summary["ttlt_ms"]["p99"], iteration.last_content_ms)
+        self.assertEqual(summary["ttlt_ms"]["max"], iteration.last_content_ms)
         self.assertEqual(
             summary["stream_complete_ms"]["p95"],
+            iteration.stream_complete_ms,
+        )
+        self.assertEqual(
+            summary["stream_complete_ms"]["p99"],
+            iteration.stream_complete_ms,
+        )
+        self.assertEqual(
+            summary["stream_complete_ms"]["max"],
             iteration.stream_complete_ms,
         )
 
@@ -298,6 +308,16 @@ class StreamingMeasurementTests(unittest.TestCase):
 
 
 class SummaryAndReportTests(unittest.TestCase):
+    def test_summarize_includes_p99_and_max(self) -> None:
+        empty = benchmark.summarize([])
+        values = benchmark.summarize([10, 20, 30, 40, 50])
+
+        self.assertEqual(empty["p99"], 0.0)
+        self.assertEqual(empty["max"], 0.0)
+        self.assertAlmostEqual(values["p95"], 48.0)
+        self.assertAlmostEqual(values["p99"], 49.6)
+        self.assertEqual(values["max"], 50)
+
     def test_output_subdirectories_are_created_separately(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             out_dir = Path(temp_dir) / "output"
@@ -418,10 +438,17 @@ class SummaryAndReportTests(unittest.TestCase):
         self.assertIn("User-to-Agent Streaming Benchmark Report", report)
         self.assertIn("First token arrives (TTFT)", report)
         self.assertIn("Average TTFT / thinking estimate", report)
+        self.assertIn("P95 TTFT / thinking estimate", report)
+        self.assertIn("P99 TTFT / thinking estimate", report)
+        self.assertIn("Max TTFT / thinking estimate", report)
+        self.assertIn("P99 composing estimate", report)
         self.assertIn("Composing estimate (TTLT - TTFT)", report)
         self.assertIn("Average TTLT marker", report)
+        self.assertIn("P95 TTLT", report)
+        self.assertIn("P99 TTLT", report)
+        self.assertIn("Max TTLT", report)
         self.assertNotIn("Completion tail", report)
-        self.assertLess(report.index("Faster TTLT"), report.index("Slower TTLT"))
+        self.assertLess(report.index("Slower TTLT"), report.index("Faster TTLT"))
 
     def test_agent_report_uses_completion_wait_presentation_and_ranking(self) -> None:
         slower = benchmark.ModelConfig("slower", "Slower completion")
@@ -438,9 +465,92 @@ class SummaryAndReportTests(unittest.TestCase):
         self.assertIn("Agent-to-Agent Streaming Benchmark Report", report)
         self.assertIn("Agent B starts", report)
         self.assertIn("Average response completion wait", report)
+        self.assertIn("P95 response completion wait", report)
+        self.assertIn("P99 response completion wait", report)
+        self.assertIn("Max response completion wait", report)
+        self.assertIn("P99 thinking estimate", report)
+        self.assertIn("Max composing estimate", report)
         self.assertIn("Completion tail", report)
         self.assertIn("Response completion wait marker", report)
         self.assertLess(report.index("Faster completion"), report.index("Slower completion"))
+
+    def test_user_report_ranking_uses_each_latency_key_in_order(self) -> None:
+        names = ["P95 TTFT", "Average TTFT", "P95 TTLT", "Average TTLT", "Max TTLT"]
+        models = []
+        for index, name in enumerate(names):
+            model = benchmark.ModelConfig(f"model-{index}", name)
+            model_summary = benchmark.build_model_summary(
+                model,
+                [self.make_result(model, 10, 20, 30)],
+            )
+            model_summary["response_ready_rate"] = 0.1 if index == 0 else 1.0
+            models.append(model_summary)
+
+        ranking_values = (
+            (1, 9, 9, 9, 9),
+            (2, 1, 9, 9, 9),
+            (2, 2, 1, 9, 9),
+            (2, 2, 2, 1, 9),
+            (2, 2, 2, 2, 1),
+        )
+        for model, values in zip(models, ranking_values):
+            model["thinking_estimate_ms"]["p95"] = values[0]
+            model["thinking_estimate_ms"]["mean"] = values[1]
+            model["usable_ttlt_ms"]["p95"] = values[2]
+            model["usable_ttlt_ms"]["mean"] = values[3]
+            model["usable_ttlt_ms"]["max"] = values[4]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "report.html"
+            benchmark.render_report(self.make_summary(list(reversed(models))), report_path, "user_to_agent")
+            report = report_path.read_text(encoding="utf-8")
+
+        positions = [report.index(f">{name}</td>") for name in names]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_agent_report_ranking_uses_completion_wait_only(self) -> None:
+        names = ["Average wait", "P95 wait", "P99 wait", "Max wait"]
+        models = []
+        for index, name in enumerate(names):
+            model = benchmark.ModelConfig(f"model-{index}", name)
+            model_summary = benchmark.build_model_summary(
+                model,
+                [self.make_result(model, 100 - index * 10, 120, 130)],
+            )
+            model_summary["response_ready_rate"] = 0.1 if index == 0 else 1.0
+            model_summary["thinking_estimate_ms"]["mean"] = 1000 - index * 100
+            models.append(model_summary)
+
+        ranking_values = (
+            (1, 9, 9, 9),
+            (2, 1, 9, 9),
+            (2, 2, 1, 9),
+            (2, 2, 2, 1),
+        )
+        for model, values in zip(models, ranking_values):
+            wait = model["response_completion_wait_ms"]
+            wait["mean"], wait["p95"], wait["p99"], wait["max"] = values
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "report.html"
+            benchmark.render_report(self.make_summary(list(reversed(models))), report_path, "agent_to_agent")
+            report = report_path.read_text(encoding="utf-8")
+
+        positions = [report.index(f">{name}</td>") for name in names]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_report_zero_ready_row_has_all_timing_cells(self) -> None:
+        model = benchmark.ModelConfig("failed", "Failed model")
+        failed = benchmark.build_model_summary(
+            model,
+            [self.make_result(model, 10, 20, None, "stream_terminal")],
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "report.html"
+            benchmark.render_report(self.make_summary([failed]), report_path, "user_to_agent")
+            report = report_path.read_text(encoding="utf-8")
+
+        self.assertEqual(report.count("<td>—</td>"), 12)
 
     def test_offline_render_writes_both_reports_without_authentication(self) -> None:
         model = benchmark.ModelConfig("sample", "Sample model")

@@ -490,12 +490,21 @@ def percentile(values: list[float], p: float) -> float:
 
 def summarize(vals: list[float]) -> dict[str, float | int]:
     if not vals:
-        return {"count": 0, "mean": 0.0, "p50": 0.0, "p95": 0.0, "min": 0.0, "max": 0.0}
+        return {
+            "count": 0,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "min": 0.0,
+            "max": 0.0,
+        }
     return {
         "count": len(vals),
         "mean": statistics.fmean(vals),
         "p50": percentile(vals, 50),
         "p95": percentile(vals, 95),
+        "p99": percentile(vals, 99),
         "min": min(vals),
         "max": max(vals),
     }
@@ -896,17 +905,30 @@ def render_report(summary: dict[str, Any], out_path: Path, audience: str) -> Non
         if audience == "user_to_agent"
         else "Agent-to-Agent Streaming Benchmark Report"
     )
-    ranking_metric = (
-        "usable_ttlt_ms" if audience == "user_to_agent" else "response_completion_wait_ms"
-    )
-
     def rank_models(models: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        def latency(model: dict[str, Any], metric: str, statistic: str) -> float:
+            if not model["response_ready"]:
+                return float("inf")
+            return model[metric][statistic]
+
+        if audience == "user_to_agent":
+            return sorted(
+                models,
+                key=lambda model: (
+                    latency(model, "thinking_estimate_ms", "p95"),
+                    latency(model, "thinking_estimate_ms", "mean"),
+                    latency(model, "usable_ttlt_ms", "p95"),
+                    latency(model, "usable_ttlt_ms", "mean"),
+                    latency(model, "usable_ttlt_ms", "max"),
+                ),
+            )
         return sorted(
             models,
             key=lambda model: (
-                -model["response_ready_rate"],
-                model[ranking_metric]["p95"] if model["response_ready"] else float("inf"),
-                model[ranking_metric]["mean"] if model["response_ready"] else float("inf"),
+                latency(model, "response_completion_wait_ms", "mean"),
+                latency(model, "response_completion_wait_ms", "p95"),
+                latency(model, "response_completion_wait_ms", "p99"),
+                latency(model, "response_completion_wait_ms", "max"),
             ),
         )
 
@@ -1025,7 +1047,7 @@ def render_report(summary: dict[str, Any], out_path: Path, audience: str) -> Non
     parts.append(
         "<p>Measured iterations select queries in template order and cycle through the query pool "
         "when necessary. Reported statistics "
-        "focus on average latency and slow-case P95 over response-ready iterations. The warm-up call "
+        "show average, P95, P99, and maximum latency over response-ready iterations. The warm-up call "
         "is recorded in <code>rawdata/raw-results.jsonl</code> for audit but excluded from stats.</p>"
     )
     parts.append("</div>")
@@ -1037,8 +1059,13 @@ def render_report(summary: dict[str, Any], out_path: Path, audience: str) -> Non
             f'<div class="section"><p>Template <code>{_esc(t["name"])}</code> has a pool of '
             f"{t['query_count']} user queries. Each model runs one warm-up (discarded) then "
             f"{measured_iterations} timed "
-            f"iterations. Rows rank by usable rate, then {('TTLT' if audience == 'user_to_agent' else 'completion-wait')} "
-            "P95, then average.</p></div>"
+            "iterations. "
+            + (
+                "Rows rank by P95 TTFT, average TTFT, P95 TTLT, average TTLT, then Max TTLT."
+                if audience == "user_to_agent"
+                else "Rows rank by average, P95, P99, then Max response completion wait."
+            )
+            + " Usable rate is shown but is not a ranking key.</p></div>"
         )
         chart_id = f"chart_{idx}"
         parts.append(f'<div class="chart"><canvas id="{chart_id}"></canvas></div>')
@@ -1047,14 +1074,26 @@ def render_report(summary: dict[str, Any], out_path: Path, audience: str) -> Non
         if audience == "user_to_agent":
             parts.append(
                 "<th>Average TTFT / thinking estimate</th>"
-                "<th>Average composing estimate</th><th>Average TTLT</th>"
-                "<th>Slow-case TTLT (P95)</th>"
+                "<th>P95 TTFT / thinking estimate</th>"
+                "<th>P99 TTFT / thinking estimate</th>"
+                "<th>Max TTFT / thinking estimate</th>"
+                "<th>Average composing estimate</th>"
+                "<th>P95 composing estimate</th>"
+                "<th>P99 composing estimate</th>"
+                "<th>Max composing estimate</th>"
+                "<th>Average TTLT</th><th>P95 TTLT</th>"
+                "<th>P99 TTLT</th><th>Max TTLT</th>"
             )
         else:
             parts.append(
-                "<th>Average thinking estimate</th><th>Average composing estimate</th>"
+                "<th>Average thinking estimate</th><th>P95 thinking estimate</th>"
+                "<th>P99 thinking estimate</th><th>Max thinking estimate</th>"
+                "<th>Average composing estimate</th><th>P95 composing estimate</th>"
+                "<th>P99 composing estimate</th><th>Max composing estimate</th>"
                 "<th>Average response completion wait</th>"
-                "<th>Slow-case completion wait (P95)</th>"
+                "<th>P95 response completion wait</th>"
+                "<th>P99 response completion wait</th>"
+                "<th>Max response completion wait</th>"
             )
         parts.append("</tr></thead><tbody>")
         rows = rank_models(t["models"])
@@ -1068,23 +1107,23 @@ def render_report(summary: dict[str, Any], out_path: Path, audience: str) -> Non
             parts.append(f'<td class="{success_cls}">{m["response_ready"]}/{m["total"]}</td>')
             parts.append(f'<td>{100 * m["response_ready_rate"]:.1f}%</td>')
             if m["response_ready"] == 0:
-                parts.extend(["<td>—</td>"] * 4)
+                parts.extend(["<td>—</td>"] * 12)
             elif audience == "user_to_agent":
-                for metric, statistic in (
-                    ("thinking_estimate_ms", "mean"),
-                    ("composing_estimate_ms", "mean"),
-                    ("usable_ttlt_ms", "mean"),
-                    ("usable_ttlt_ms", "p95"),
+                for metric in (
+                    "thinking_estimate_ms",
+                    "composing_estimate_ms",
+                    "usable_ttlt_ms",
                 ):
-                    parts.append(f'<td>{_fmt_ms(m[metric][statistic])}</td>')
+                    for statistic in ("mean", "p95", "p99", "max"):
+                        parts.append(f'<td>{_fmt_ms(m[metric][statistic])}</td>')
             else:
-                for metric, statistic in (
-                    ("thinking_estimate_ms", "mean"),
-                    ("composing_estimate_ms", "mean"),
-                    ("response_completion_wait_ms", "mean"),
-                    ("response_completion_wait_ms", "p95"),
+                for metric in (
+                    "thinking_estimate_ms",
+                    "composing_estimate_ms",
+                    "response_completion_wait_ms",
                 ):
-                    parts.append(f'<td>{_fmt_ms(m[metric][statistic])}</td>')
+                    for statistic in ("mean", "p95", "p99", "max"):
+                        parts.append(f'<td>{_fmt_ms(m[metric][statistic])}</td>')
             parts.append("</tr>")
         parts.append("</tbody></table></div>")
         parts.append('<p class="subtitle">Latency values are client-observed and shown in ms, or seconds when ≥ 1000 ms.</p>')
